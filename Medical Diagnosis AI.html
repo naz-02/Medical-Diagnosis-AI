@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroScan-GEN AI | Analyse IRM Avancée</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #121212;
+            --secondary: #1E1E1E;
+            --accent: #00BCD4;
+            --alert: #F44336;
+            --success: #4CAF50;
+            --text-light: #FFFFFF;
+            --text-muted: #B0B0B0;
+        }
+        body {
+            background-color: var(--primary);
+            color: var(--text-light);
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+        .card {
+            background-color: var(--secondary);
+            border: 1px solid #2D2D2D;
+        }
+        .border-light {
+            border-color: #2D2D2D;
+        }
+        .text-muted {
+            color: var(--text-muted);
+        }
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #00A5C4;
+        }
+        .btn-alert {
+            background-color: var(--alert);
+            color: white;
+        }
+        .btn-alert:hover {
+            background-color: #D32F2F;
+        }
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #3D8B40;
+        }
+        .file-drop-zone {
+            border: 2px dashed #3D3D3D;
+            transition: all 0.3s ease;
+        }
+        .file-drop-zone.active {
+            border-color: var(--accent);
+            background-color: rgba(0, 188, 212, 0.05);
+        }
+        .mri-viewer {
+            background-color: #1F2937;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .heatmap-overlay {
+            mix-blend-mode: multiply;
+            opacity: 0.7;
+        }
+        .lesion-highlight {
+            animation: highlight 3s ease-in-out infinite;
+        }
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #3D3D3D;
+            border-radius: 3px;
+        }
+        .ai-message {
+            background-color: #2D3748;
+            border-radius: 0 8px 8px 8px;
+        }
+        .user-message {
+            background-color: #1E40AF;
+            border-radius: 8px 0 8px 8px;
+        }
+        .tooltip {
+            position: relative;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: #111827;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #111827 transparent transparent transparent;
+        }
+        .file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- Top Navigation -->
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center">
+                    <i class="fas fa-brain text-2xl mr-2 text-cyan-400"></i>
+                    <span class="text-xl font-bold">NeuroScan-GEN AI</span>
+                </div>
+                <div class="hidden md:flex space-x-1">
+                    <a href="#" class="px-3 py-2 rounded hover:bg-gray-800 transition"><i class="fas fa-tachometer-alt mr-1"></i> Tableau de bord</a>
+                    <a href="#" class="px-3 py-2 rounded hover:bg-gray-800 transition"><i class="fas fa-user-injured mr-1"></i> Patients</a>
+                    <a href="#" class="px-3 py-2 rounded hover:bg-gray-800 transition"><i class="fas fa-database mr-1"></i> Bases de données</a>
+                    <a href="#" class="px-3 py-2 rounded hover:bg-gray-800 transition"><i class="fas fa-chart-bar mr-1"></i> Analyses</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Rechercher patients..." class="bg-gray-800 text-white placeholder-gray-400 rounded-full py-1 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <i class="fas fa-search absolute left-3 top-2 text-gray-400"></i>
+                </div>
+                <div class="flex items-center space-x-2 cursor-pointer">
+                    <div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center">
+                        <span class="text-white font-semibold"></span>
+                    </div>
+                    <span class="hidden md:inline">med et nassro</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-6">
+        <!-- Main Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold mb-2">Analyse IRM Avancée</h1>
+            <p class="text-muted">Détection assistée par IA des maladies rares et anomalies dans les images médicales</p>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="card rounded-lg shadow p-4 hover:bg-gray-800 transition cursor-pointer" onclick="openUploadModal()">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-muted text-sm">Nouvelle analyse</p>
+                        <p class="text-xl font-bold">Importer IRM</p>
+                    </div>
+                    <div class="bg-cyan-900 p-3 rounded-full">
+                        <i class="fas fa-upload text-cyan-400"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card rounded-lg shadow p-4 hover:bg-gray-800 transition cursor-pointer" onclick="loadPatient('gbm')">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-muted text-sm">Cas exemple</p>
+                        <p class="text-xl font-bold text-red-400">Patient GBM</p>
+                    </div>
+                    <div class="bg-red-900 p-3 rounded-full">
+                        <i class="fas fa-exclamation text-red-400"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card rounded-lg shadow p-4 hover:bg-gray-800 transition cursor-pointer" onclick="loadPatient('normal')">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-muted text-sm">Cas exemple</p>
+                        <p class="text-xl font-bold text-green-400">IRM Normale</p>
+                    </div>
+                    <div class="bg-green-900 p-3 rounded-full">
+                        <i class="fas fa-check text-green-400"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card rounded-lg shadow p-4 hover:bg-gray-800 transition cursor-pointer" onclick="loadPatient('rare')">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-muted text-sm">Cas exemple</p>
+                        <p class="text-xl font-bold text-purple-400">Maladie Rare</p>
+                    </div>
+                    <div class="bg-purple-900 p-3 rounded-full">
+                        <i class="fas fa-dna text-purple-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Analysis Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- MRI Viewer -->
+            <div class="lg:col-span-2 card rounded-lg shadow overflow-hidden">
+                <div class="border-b border-light p-4 flex justify-between items-center">
+                    <h2 class="font-semibold text-lg">Visualiseur IRM</h2>
+                    <div class="flex space-x-2">
+                        <button class="px-3 py-1 bg-cyan-600 text-white rounded text-sm flex items-center tooltip" id="contrast-btn">
+                            <i class="fas fa-sliders-h mr-1"></i> Réglages
+                            <span class="tooltip-text">Ajuster le contraste et la luminosité</span>
+                        </button>
+                        <button class="px-3 py-1 border border-light rounded text-sm flex items-center tooltip" id="measure-btn">
+                            <i class="fas fa-ruler mr-1"></i> Mesurer
+                            <span class="tooltip-text">Mesurer les dimensions de la lésion</span>
+                        </button>
+                        <button class="px-3 py-1 border border-light rounded text-sm flex items-center tooltip" id="heatmap-btn" onclick="toggleHeatmap()">
+                            <i class="fas fa-fire mr-1"></i> Carte thermique
+                            <span class="tooltip-text">Afficher la carte thermique IA</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="mri-viewer rounded-lg overflow-hidden relative" style="height: 400px;">
+                        <!-- MRI Image with highlighted lesion -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div id="scan-placeholder" class="bg-gray-800 w-full h-full flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="fas fa-image text-4xl text-gray-600 mb-2"></i>
+                                    <p class="text-muted">Importez une IRM pour commencer l'analyse</p>
+                                    <button onclick="openUploadModal()" class="mt-4 btn-primary py-2 px-6 rounded-lg">
+                                        <i class="fas fa-upload mr-2"></i> Importer IRM
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- This would be replaced with actual MRI image -->
+                            <img id="mri-image" src="" alt="IRM" class="hidden w-full h-full object-contain">
+                            <!-- Heatmap overlay -->
+                            <img id="heatmap-overlay" src="" alt="Carte thermique IA" class="heatmap-overlay absolute hidden w-full h-full object-contain">
+                            <!-- Lesion highlight (example) -->
+                            <div id="lesion-highlight" class="lesion-highlight absolute hidden" style="width: 80px; height: 60px; border: 2px solid #ef4444; border-radius: 4px;"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-4">
+                        <div class="flex space-x-2">
+                            <button id="axial-btn" class="px-3 py-1 bg-cyan-600 text-white rounded text-sm" onclick="changeView('axial')">Axial</button>
+                            <button id="coronal-btn" class="px-3 py-1 bg-gray-700 text-white rounded text-sm" onclick="changeView('coronal')">Coronal</button>
+                            <button id="sagittal-btn" class="px-3 py-1 bg-gray-700 text-white rounded text-sm" onclick="changeView('sagittal')">Sagittal</button>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-gray-700 text-white rounded text-sm tooltip">
+                                <i class="fas fa-undo"></i>
+                                <span class="tooltip-text">Annuler</span>
+                            </button>
+                            <button class="px-3 py-1 bg-gray-700 text-white rounded text-sm tooltip">
+                                <i class="fas fa-redo"></i>
+                                <span class="tooltip-text">Rétablir</span>
+                            </button>
+                            <button class="px-3 py-1 bg-gray-700 text-white rounded text-sm tooltip">
+                                <i class="fas fa-rotate"></i>
+                                <span class="tooltip-text">Pivoter</span>
+                            </button>
+                            <button class="px-3 py-1 bg-gray-700 text-white rounded text-sm tooltip">
+                                <i class="fas fa-search-plus"></i>
+                                <span class="tooltip-text">Zoom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="card rounded-lg shadow overflow-hidden">
+                <div class="border-b border-light p-4">
+                    <h2 class="font-semibold text-lg">Résultats d'analyse IA</h2>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium">Confiance de détection</span>
+                            <span id="confidence-value" class="text-sm font-semibold text-cyan-400">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2.5">
+                            <div id="confidence-bar" class="bg-cyan-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4" id="analysis-results">
+                        <div class="text-center py-8 text-muted">
+                            <i class="fas fa-microscope text-3xl mb-2"></i>
+                            <p>Aucun résultat d'analyse pour le moment</p>
+                            <p class="text-sm mt-2">Importez une IRM pour commencer l'analyse</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-2">
+                        <button id="generate-report-btn" class="w-full btn-primary py-2 px-4 rounded-lg flex items-center justify-center" disabled onclick="generateReport()">
+                            <i class="fas fa-file-pdf mr-2"></i> Exporter rapport PDF
+                        </button>
+                        <button id="ask-ai-btn" class="w-full border border-cyan-600 text-cyan-400 hover:bg-gray-800 py-2 px-4 rounded-lg flex items-center justify-center" disabled onclick="openAiChat()">
+                            <i class="fas fa-robot mr-2"></i> Demander explication IA
+                        </button>
+                        <button id="view-protocol-btn" class="w-full border border-green-600 text-green-400 hover:bg-gray-800 py-2 px-4 rounded-lg flex items-center justify-center" disabled onclick="viewProtocol()">
+                            <i class="fas fa-book-medical mr-2"></i> Voir protocole
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat and Dataset Info -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- AI Chat Interface -->
+            <div class="card rounded-lg shadow overflow-hidden" id="ai-chat-container" style="display: none;">
+                <div class="border-b border-light p-4 flex justify-between items-center">
+                    <h2 class="font-semibold text-lg">Assistant Médical IA</h2>
+                    <button onclick="closeAiChat()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <div class="chat-container mb-4" id="chat-messages">
+                        <div class="ai-message p-3 mb-2 text-sm">
+                            <p>Bonjour ! Je suis votre assistant médical IA. Je peux vous aider à interpréter les résultats IRM et répondre à vos questions sur les anomalies détectées.</p>
+                        </div>
+                    </div>
+                    <div class="flex">
+                        <input type="text" id="chat-input" placeholder="Posez une question sur les résultats IRM..." class="flex-1 bg-gray-700 border border-gray-600 rounded-l-lg px-3 py-2 text-white focus:outline-none">
+                        <button onclick="sendMessage()" class="bg-cyan-600 text-white px-4 py-2 rounded-r-lg">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dataset Integration -->
+            <div class="card rounded-lg shadow overflow-hidden">
+                <div class="border-b border-light p-4">
+                    <h2 class="font-semibold text-lg">Intégration des bases de données</h2>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <div class="flex items-center mb-2">
+                            <div class="bg-cyan-900 p-2 rounded-full mr-3">
+                                <i class="fas fa-database text-cyan-400"></i>
+                            </div>
+                            <h3 class="font-semibold">Bases de données médicales connectées</h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div class="flex items-center p-2 bg-gray-800 rounded">
+                                <i class="fas fa-circle text-green-500 mr-2 text-xs"></i>
+                                <span>BraTS 2023</span>
+                            </div>
+                            <div class="flex items-center p-2 bg-gray-800 rounded">
+                                <i class="fas fa-circle text-green-500 mr-2 text-xs"></i>
+                                <span>TCIA</span>
+                            </div>
+                            <div class="flex items-center p-2 bg-gray-800 rounded">
+                                <i class="fas fa-circle text-green-500 mr-2 text-xs"></i>
+                                <span>OASIS-3</span>
+                            </div>
+                            <div class="flex items-center p-2 bg-gray-800 rounded">
+                                <i class="fas fa-circle text-green-500 mr-2 text-xs"></i>
+                                <span>Base de maladies rares</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center mb-2">
+                            <div class="bg-purple-900 p-2 rounded-full mr-3">
+                                <i class="fas fa-brain text-purple-400"></i>
+                            </div>
+                            <h3 class="font-semibold">Performance des modèles IA</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="p-2 bg-gray-800 rounded">
+                                <p class="text-xs text-muted">Précision</p>
+                                <p class="font-semibold text-green-400">96.4%</p>
+                            </div>
+                            <div class="p-2 bg-gray-800 rounded">
+                                <p class="text-xs text-muted">Sensibilité</p>
+                                <p class="font-semibold text-green-400">97.2%</p>
+                            </div>
+                            <div class="p-2 bg-gray-800 rounded">
+                                <p class="text-xs text-muted">Spécificité</p>
+                                <p class="font-semibold text-green-400">95.8%</p>
+                            </div>
+                            <div class="p-2 bg-gray-800 rounded">
+                                <p class="text-xs text-muted">Score F1</p>
+                                <p class="font-semibold text-green-400">0.95</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MRI Upload Modal -->
+    <div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl border border-gray-700">
+            <div class="border-b border-gray-700 p-4 flex justify-between items-center">
+                <h3 class="font-semibold text-lg">Importer des IRM</h3>
+                <button onclick="closeUploadModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <input type="file" id="mri-file-input" class="file-input" accept=".dcm,.nii,.nii.gz,.jpg,.png" multiple>
+                <div class="file-drop-zone border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition" id="drop-zone" onclick="document.getElementById('mri-file-input').click()">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-cyan-500 mb-3"></i>
+                    <p class="text-muted mb-4">Glissez-déposez des fichiers DICOM ou NIfTI ici, ou cliquez pour parcourir</p>
+                    <button class="btn-primary py-2 px-6 rounded-lg">
+                        <i class="fas fa-folder-open mr-2"></i> Sélectionner des fichiers
+                    </button>
+                    <p class="text-xs text-muted mt-3">Formats supportés: .dcm, .nii, .nii.gz, .jpg, .png (Max 50MB)</p>
+                </div>
+                
+                <div class="mt-6">
+                    <h4 class="font-medium mb-3">Informations patient</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-muted mb-1">ID Patient</label>
+                            <input type="text" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-muted mb-1">Nom</label>
+                            <input type="text" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-muted mb-1">Âge</label>
+                            <input type="number" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-muted mb-1">Sexe</label>
+                            <select class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                <option>Masculin</option>
+                                <option>Féminin</option>
+                                <option>Autre</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 p-4 flex justify-end">
+                <button onclick="closeUploadModal()" class="px-4 py-2 border border-gray-600 text-white rounded-lg mr-2 hover:bg-gray-700 transition">Annuler</button>
+                <button onclick="handleFileUpload()" class="px-4 py-2 btn-primary rounded-lg hover:bg-cyan-700 transition">Importer et Analyser</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Report Modal -->
+    <div id="pdf-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl h-5/6 flex flex-col border border-gray-700">
+            <div class="border-b border-gray-700 p-4 flex justify-between items-center">
+                <h3 class="font-semibold text-lg">Aperçu du rapport médical</h3>
+                <div class="flex space-x-2">
+                    <button class="px-3 py-1 btn-primary rounded text-sm" onclick="downloadPdf()">
+                        <i class="fas fa-download mr-1"></i> Télécharger
+                    </button>
+                    <button onclick="closePdfModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <iframe id="pdf-viewer" class="w-full h-full" src="" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Protocol Modal -->
+    <div id="protocol-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl h-3/4 flex flex-col border border-gray-700">
+            <div class="border-b border-gray-700 p-4 flex justify-between items-center">
+                <h3 class="font-semibold text-lg">Protocole de traitement</h3>
+                <button onclick="closeProtocolModal()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4" id="protocol-content">
+                <!-- Protocol content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample patient data
+        const patients = {
+            gbm: {
+                name: "Jean Dupont",
+                id: "NSG-4872",
+                age: 58,
+                gender: "Masculin",
+                mriUrl: "https://radiopaedia.org/images/5124337/5e9c8b0f3d9b1dfb6c6c5a6a3d8b1f/jpeg?lang=us",
+                heatmapUrl: "https://i.imgur.com/JQ9w7bW.png",
+                lesion: {
+                    present: true,
+                    position: { top: "45%", left: "40%" },
+                    size: "3.2 × 2.8 cm",
+                    type: "Glioblastome Multiforme (Grade IV)",
+                    location: "Lobe frontal gauche",
+                    midlineShift: "4.7 mm",
+                    edema: "Œdème périlésionnel modéré"
+                },
+                confidence: 97.4,
+                report: `
+                    <h3 class="font-bold text-lg mb-2">Rapport d'imagerie médicale</h3>
+                    <p class="text-sm mb-4">Généré le: <span class="font-medium">${new Date().toLocaleDateString()}</span> | ID Patient: <span class="font-medium">NSG-4872</span></p>
+                    
+                    <h4 class="font-semibold text-red-400 mb-2">OBSERVATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1 mb-4">
+                        <li>Large lésion hétérogène rehaussée dans le lobe frontal gauche mesurant 3.2 × 2.8 cm</li>
+                        <li>Œdème vasogénique important avec effet de masse entraînant un décalage de la ligne médiane de 4.7 mm</li>
+                        <li>Marges irrégulières avec nécrose centrale, compatibles avec un gliome de haut grade</li>
+                        <li>Aucune évidence d'hémorragie ou de calcification</li>
+                    </ul>
+                    
+                    <h4 class="font-semibold mb-2">IMPRESSION:</h4>
+                    <p class="text-sm mb-4">Les observations sont compatibles avec un <span class="font-semibold text-red-400">glioblastome multiforme (OMS Grade IV)</span>. La lésion présente des caractéristiques typiques incluant un rehaussement annulaire irrégulier, une nécrose centrale et un œdème périlésionnel important.</p>
+                    
+                    <h4 class="font-semibold mb-2">RECOMMANDATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1">
+                        <li>Consultation neurochirurgicale urgente pour une éventuelle résection</li>
+                        <li>Envisager une corticothérapie préopératoire pour la gestion de l'œdème</li>
+                        <li>Chimioradiothérapie postopératoire selon le protocole Stupp recommandée</li>
+                        <li>Profilage moléculaire (IDH, MGMT) pour guider la thérapie</li>
+                    </ul>
+                    
+                    <div class="mt-4 pt-4 border-t border-light">
+                        <p class="text-xs text-muted">Modèle IA: ResNet-152 + BioGPT-Medical | Confiance: 97.4% | Base de données: BraTS 2023</p>
+                    </div>
+                `,
+                protocol: `
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-3">Protocole de traitement du Glioblastome Multiforme (GBM)</h3>
+                        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-cyan-400 mb-2">1. Résection neurochirurgicale</h4>
+                            <p class="text-sm mb-2">La résection maximale sécuritaire est le traitement initial de choix pour le GBM.</p>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <span class="bg-red-900 text-red-400 text-xs px-2 py-1 rounded">Priorité: Élevée</span>
+                                <span class="bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded">Délai: 1-2 semaines</span>
+                            </div>
+                            <p class="text-xs text-muted">Référence: NCCN Guidelines v2.2023</p>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-purple-400 mb-2">2. Protocole Stupp</h4>
+                            <p class="text-sm mb-2">Témozolomide concomitant à la radiothérapie suivi de témozolomide adjuvant.</p>
+                            <ul class="list-disc pl-5 text-sm space-y-1 mb-2">
+                                <li>Radiothérapie: 60 Gy en 30 fractions sur 6 semaines</li>
+                                <li>Témozolomide: 75 mg/m² quotidien pendant la RT, puis 150-200 mg/m² pour 6 cycles</li>
+                            </ul>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-purple-900 text-purple-400 text-xs px-2 py-1 rounded">Soin standard</span>
+                                <span class="bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded">Durée: 6 semaines + 6 cycles</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold text-green-400 mb-2">3. Tests moléculaires</h4>
+                            <p class="text-sm mb-2">Statut de méthylation du promoteur MGMT et test de mutation IDH pour la stratification pronostique.</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-green-900 text-green-400 text-xs px-2 py-1 rounded">Diagnostique</span>
+                                <span class="bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded">Essentiel pour la planification</span>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                aiResponses: [
+                    "Cette IRM montre un glioblastome multiforme (GBM), qui est la tumeur cérébrale primaire la plus agressive chez l'adulte.",
+                    "La tumeur est située dans le lobe frontal gauche et mesure 3.2 × 2.8 cm avec un œdème important.",
+                    "Le traitement implique typiquement une résection chirurgicale maximale sécuritaire suivie de radiothérapie et chimiothérapie (protocole Stupp).",
+                    "Le pronostic du GBM reste sombre avec une survie médiane de 12-18 mois malgré un traitement agressif."
+                ]
+            },
+            normal: {
+                name: "Sarah Martin",
+                id: "NSG-5291",
+                age: 42,
+                gender: "Féminin",
+                mriUrl: "https://radiopaedia.org/images/20761772/5e9c8b0f3d9b1dfb6c6c5a6a3d8b1f/jpeg?lang=us",
+                heatmapUrl: "",
+                lesion: {
+                    present: false
+                },
+                confidence: 99.1,
+                report: `
+                    <h3 class="font-bold text-lg mb-2">Rapport d'imagerie médicale</h3>
+                    <p class="text-sm mb-4">Généré le: <span class="font-medium">${new Date().toLocaleDateString()}</span> | ID Patient: <span class="font-medium">NSG-5291</span></p>
+                    
+                    <h4 class="font-semibold text-green-400 mb-2">OBSERVATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1 mb-4">
+                        <li>Aucune lésion focale identifiée</li>
+                        <li>Différenciation normale entre matière grise et blanche</li>
+                        <li>Aucune évidence d'hémorragie, d'infarctus ou de rehaussement anormal</li>
+                        <li>Taille ventriculaire et patron des sillons normaux pour l'âge</li>
+                    </ul>
+                    
+                    <h4 class="font-semibold mb-2">IMPRESSION:</h4>
+                    <p class="text-sm mb-4">Les observations démontrent <span class="font-semibold text-green-400">aucune évidence de pathologie intracrânienne</span>. Le parenchyme cérébral apparaît normal sans lésion, infarctus aigu ou autres anomalies.</p>
+                    
+                    <h4 class="font-semibold mb-2">RECOMMANDATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1">
+                        <li>Aucune intervention immédiate requise</li>
+                        <li>Suivi clinique de routine au besoin</li>
+                        <li>Envisager une nouvelle imagerie si des symptômes cliniques apparaissent ou changent</li>
+                    </ul>
+                    
+                    <div class="mt-4 pt-4 border-t border-light">
+                        <p class="text-xs text-muted">Modèle IA: ResNet-152 + BioGPT-Medical | Confiance: 99.1% | Base de données: OASIS-3</p>
+                    </div>
+                `,
+                protocol: `
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-3">Protocole pour IRM normale</h3>
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold text-green-400 mb-2">Recommandations de prise en charge</h4>
+                            <p class="text-sm mb-2">Aucun traitement spécifique n'est requis pour une IRM normale.</p>
+                            <ul class="list-disc pl-5 text-sm space-y-1 mb-2">
+                                <li>Rassurer le patient quant aux résultats normaux</li>
+                                <li>Envisager d'autres diagnostics si les symptômes persistent</li>
+                                <li>Imagerie de suivi non recommandée systématiquement</li>
+                            </ul>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-green-900 text-green-400 text-xs px-2 py-1 rounded">Aucune action</span>
+                                <span class="bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded">Suivi optionnel</span>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                aiResponses: [
+                    "Cette IRM apparaît complètement normale sans aucune évidence d'anomalie.",
+                    "Toutes les structures cérébrales sont de taille et position appropriées pour une femme de 42 ans.",
+                    "Aucune imagerie supplémentaire n'est recommandée à moins que de nouveaux symptômes n'apparaissent.",
+                    "Le score de confiance élevé (99.1%) indique une lecture normale très fiable."
+                ]
+            },
+            rare: {
+                name: "Robert Lang",
+                id: "NSG-6153",
+                age: 35,
+                gender: "Masculin",
+                mriUrl: "https://radiopaedia.org/images/20761772/5e9c8b0f3d9b1dfb6c6c5a6a3d8b1f/jpeg?lang=us",
+                heatmapUrl: "https://i.imgur.com/JQ9w7bW.png",
+                lesion: {
+                    present: true,
+                    position: { top: "55%", left: "60%" },
+                    size: "1.8 × 1.2 cm",
+                    type: "Trouble génétique rare (CADASIL)",
+                    location: "Substance blanche bilatérale",
+                    midlineShift: "Aucun",
+                    edema: "Œdème périlésionnel léger"
+                },
+                confidence: 94.3,
+                report: `
+                    <h3 class="font-bold text-lg mb-2">Rapport d'imagerie médicale</h3>
+                    <p class="text-sm mb-4">Généré le: <span class="font-medium">${new Date().toLocaleDateString()}</span> | ID Patient: <span class="font-medium">NSG-6153</span></p>
+                    
+                    <h4 class="font-semibold text-purple-400 mb-2">OBSERVATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1 mb-4">
+                        <li>Multiples hyperintensités confluentes de la substance blanche dans les deux hémisphères</li>
+                        <li>Lésion focale dans le lobe temporal mesurant 1.8 × 1.2 cm avec œdème périlésionnel léger</li>
+                        <li>Aucun effet de masse ou décalage de la ligne médiane</li>
+                        <li>Atteinte caractéristique de la capsule externe et des lobes temporaux antérieurs</li>
+                    </ul>
+                    
+                    <h4 class="font-semibold mb-2">IMPRESSION:</h4>
+                    <p class="text-sm mb-4">Les observations sont très suggestives d'un <span class="font-semibold text-purple-400">CADASIL (Angiopathie Cérébrale Autosomique Dominante avec Infarctus Sous-corticaux et Leucoencéphalopathie)</span>, un trouble génétique rare. La distribution et l'apparence des anomalies de la substance blanche sont caractéristiques.</p>
+                    
+                    <h4 class="font-semibold mb-2">RECOMMANDATIONS:</h4>
+                    <ul class="list-disc pl-5 text-sm space-y-1">
+                        <li>Test génétique pour la mutation NOTCH3 pour confirmer le diagnostic</li>
+                        <li>Consultation neurologique pour la gestion des symptômes</li>
+                        <li>IRM/ARM du cerveau pour évaluer d'éventuelles anomalies vasculaires supplémentaires</li>
+                        <li>Dépistage familial recommandé en raison du mode de transmission autosomique dominant</li>
+                    </ul>
+                    
+                    <div class="mt-4 pt-4 border-t border-light">
+                        <p class="text-xs text-muted">Modèle IA: ResNet-152 + BioGPT-Medical | Confiance: 94.3% | Base de données: Base de maladies rares</p>
+                    </div>
+                `,
+                protocol: `
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-3">Protocole de prise en charge du CADASIL</h3>
+                        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-purple-400 mb-2">1. Test génétique</h4>
+                            <p class="text-sm mb-2">Séquençage du gène NOTCH3 pour confirmer le diagnostic de CADASIL.</p>
+                            <ul class="list-disc pl-5 text-sm space-y-1 mb-2">
+                                <li>Prélèvement sanguin pour analyse ADN</li>
+                                <li>Recherche de mutations altérant les cystéines dans NOTCH3</li>
+                                <li>Délai de rendu: 4-6 semaines</li>
+                            </ul>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-purple-900 text-purple-400 text-xs px-2 py-1 rounded">Diagnostique</span>
+                                <span class="bg-gray-600 text-gray-300 text-xs px-2 py-1 rounded">Essentiel pour confirmation</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold text-cyan-400 mb-2">2. Prise en charge neurologique</h4>
+                            <p class="text-sm mb-2">Traitement symptomatique et surveillance:</p>
+                            <ul class="list-disc pl-5 text-sm space-y-1 mb-2">
+                                <li>Prophylaxie des migraines (éviter les vasoconstricteurs)</li>
+                                <li>Prévention des AVC (antiagrégants plaquettaires peuvent être envisagés)</li>
+                                <li>Évaluation et soutien cognitif</li>
+                                <li>Évaluation neurologique annuelle</li>
+                            </ul>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-cyan-900 text-cyan-400 text-xs px-2 py-1 rounded">Soin continu</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <h4 class="font-semibold text-green-400 mb-2">3. Dépistage familial</h4>
+                            <p class="text-sm mb-2">Conseil génétique et tests pour les parents au premier degré.</p>
+                            <ul class="list-disc pl-5 text-sm space-y-1 mb-2">
+                                <li>Mode de transmission autosomique dominant</li>
+                                <li>50% de risque de transmission à la descendance</li>
+                                <li>Test présymptomatique disponible</li>
+                            </ul>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-green-900 text-green-400 text-xs px-2 py-1 rounded">Préventif</span>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                aiResponses: [
+                    "Cette IRM montre des anomalies caractéristiques de la substance blanche suggestives de CADASIL, un trouble génétique rare.",
+                    "Les observations incluent des lésions bilatérales de la substance blanche avec atteinte des lobes temporaux, typiques du CADASIL.",
+                    "Le diagnostic doit être confirmé par un test génétique NOTCH3 en raison du mode de transmission autosomique dominant.",
+                    "La prise en charge se concentre sur le contrôle des symptômes car il n'existe actuellement aucun traitement curatif pour le CADASIL."
+                ]
+            }
+        };
+
+        // Current patient data
+        let currentPatient = null;
+        let heatmapVisible = false;
+        let currentView = 'axial';
+        let uploadedFiles = [];
+
+        // Handle file selection
+        function handleFileUpload() {
+            const fileInput = document.getElementById('mri-file-input');
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                alert("Veuillez sélectionner au moins un fichier IRM");
+                return;
+            }
+            
+            // Check file types and sizes
+            const validTypes = ['image/dicom', 'image/nii', 'image/jpeg', 'image/png'];
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileType = file.type;
+                const fileSize = file.size;
+                
+                if (!validTypes.some(type => fileType.includes(type.replace('image/', ''))) && 
+                    !['.dcm', '.nii', '.nii.gz', '.jpg', '.png'].some(ext => file.name.toLowerCase().endsWith(ext))) {
+                    alert(`Format de fichier non supporté: ${file.name}`);
+                    return;
+                }
+                
+                if (fileSize > maxSize) {
+                    alert(`Fichier trop volumineux (max 50MB): ${file.name}`);
+                    return;
+                }
+            }
+            
+            // Store files for processing
+            uploadedFiles = Array.from(files);
+            
+            // Show loading state
+            const uploadBtn = document.querySelector('#upload-modal button:last-child');
+            const originalText = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analyse en cours...';
+            uploadBtn.disabled = true;
+            
+            // Simulate analysis delay
+            setTimeout(() => {
+                closeUploadModal();
+                
+                // Create a preview of the first image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('mri-image').src = e.target.result;
+                    document.getElementById('scan-placeholder').classList.add('hidden');
+                    document.getElementById('mri-image').classList.remove('hidden');
+                    
+                    // For demo purposes, we'll use the rare disease patient data
+                    loadPatient('rare');
+                };
+                reader.readAsDataURL(files[0]);
+                
+                uploadBtn.innerHTML = originalText;
+                uploadBtn.disabled = false;
+            }, 2000);
+        }
+
+        // Load patient data
+        function loadPatient(type) {
+            currentPatient = patients[type];
+            
+            // Update MRI viewer
+            const placeholder = document.getElementById('scan-placeholder');
+            const mriImage = document.getElementById('mri-image');
+            const heatmapOverlay = document.getElementById('heatmap-overlay');
+            const lesionHighlight = document.getElementById('lesion-highlight');
+            
+            placeholder.classList.add('hidden');
+            mriImage.classList.remove('hidden');
+            
+            if (currentPatient.heatmapUrl) {
+                heatmapOverlay.src = currentPatient.heatmapUrl;
+                if (heatmapVisible) {
+                    heatmapOverlay.classList.remove('hidden');
+                }
+            } else {
+                heatmapOverlay.classList.add('hidden');
+            }
+            
+            if (currentPatient.lesion.present) {
+                lesionHighlight.classList.remove('hidden');
+                lesionHighlight.style.top = currentPatient.lesion.position.top;
+                lesionHighlight.style.left = currentPatient.lesion.position.left;
+            } else {
+                lesionHighlight.classList.add('hidden');
+            }
+            
+            // Update analysis results
+            const analysisResults = document.getElementById('analysis-results');
+            if (currentPatient.lesion.present) {
+                analysisResults.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Présence d'anomalie</span>
+                            <span class="text-sm font-semibold ${currentPatient.lesion.type.includes('Rare') ? 'text-purple-400' : 'text-red-400'}">Détectée</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">${currentPatient.lesion.type}</div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Taille de la lésion</span>
+                            <span class="text-sm font-semibold">${currentPatient.lesion.size}</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Localisation: ${currentPatient.lesion.location}</div>
+                    </div>
+
+                    ${currentPatient.lesion.midlineShift !== "Aucun" ? `
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Décalage ligne médiane</span>
+                            <span class="text-sm font-semibold">${currentPatient.lesion.midlineShift}</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Déplacement significatif détecté</div>
+                    </div>
+                    ` : ''}
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Œdème</span>
+                            <span class="text-sm font-semibold ${currentPatient.lesion.edema.includes('Aucun') ? 'text-green-400' : 'text-yellow-400'}">${currentPatient.lesion.edema}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                analysisResults.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Présence d'anomalie</span>
+                            <span class="text-sm font-semibold text-green-400">Non détectée</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Aucune anomalie trouvée</div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Anatomie cérébrale</span>
+                            <span class="text-sm font-semibold text-green-400">Normale</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Toutes les structures apparaissent intactes</div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Taille ventriculaire</span>
+                            <span class="text-sm font-semibold">Normale</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Pas d'élargissement ou d'asymétrie</div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Substance blanche</span>
+                            <span class="text-sm font-semibold text-green-400">Normale</span>
+                        </div>
+                        <div class="text-sm text-muted mt-1">Aucune lésion focale</div>
+                    </div>
+                `;
+            }
+            
+            // Update confidence
+            document.getElementById('confidence-value').textContent = `${currentPatient.confidence}%`;
+            document.getElementById('confidence-bar').style.width = `${currentPatient.confidence}%`;
+            
+            // Enable buttons
+            document.getElementById('generate-report-btn').disabled = false;
+            document.getElementById('ask-ai-btn').disabled = false;
+            document.getElementById('view-protocol-btn').disabled = false;
+            
+            closeUploadModal();
+        }
+
+        // Toggle heatmap overlay
+        function toggleHeatmap() {
+            const heatmapOverlay = document.getElementById('heatmap-overlay');
+            heatmapVisible = !heatmapVisible;
+            
+            if (heatmapVisible && currentPatient && currentPatient.heatmapUrl) {
+                heatmapOverlay.classList.remove('hidden');
+            } else {
+                heatmapOverlay.classList.add('hidden');
+            }
+        }
+
+        // Change MRI view (axial, coronal, sagittal)
+        function changeView(view) {
+            currentView = view;
+            document.getElementById('axial-btn').classList.remove('bg-cyan-600');
+            document.getElementById('axial-btn').classList.add('bg-gray-700');
+            document.getElementById('coronal-btn').classList.remove('bg-cyan-600');
+            document.getElementById('coronal-btn').classList.add('bg-gray-700');
+            document.getElementById('sagittal-btn').classList.remove('bg-cyan-600');
+            document.getElementById('sagittal-btn').classList.add('bg-gray-700');
+            
+            document.getElementById(`${view}-btn`).classList.remove('bg-gray-700');
+            document.getElementById(`${view}-btn`).classList.add('bg-cyan-600');
+            
+            // In a real app, this would load the appropriate view
+            alert(`Passage à la vue ${view.charAt(0).toUpperCase() + view.slice(1)}`);
+        }
+
+        // Generate and show PDF report
+        function generateReport() {
+            if (!currentPatient) return;
+            
+            // In a real app, this would generate a PDF with the report and annotated image
+            document.getElementById('pdf-viewer').src = "https://example.com/generated-report.pdf";
+            document.getElementById('pdf-modal').classList.remove('hidden');
+        }
+
+        // Download PDF report
+        function downloadPdf() {
+            alert('Dans une application réelle, cela téléchargerait le rapport PDF généré');
+            // This would generate and download a PDF with the current report and annotated image
+        }
+
+        // Open AI chat interface
+        function openAiChat() {
+            document.getElementById('ai-chat-container').style.display = 'block';
+            // Clear previous messages except the initial greeting
+            const chatMessages = document.getElementById('chat-messages');
+            while (chatMessages.children.length > 1) {
+                chatMessages.removeChild(chatMessages.lastChild);
+            }
+        }
+
+        // Close AI chat interface
+        function closeAiChat() {
+            document.getElementById('ai-chat-container').style.display = 'none';
+        }
+
+        // Send message to AI
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message || !currentPatient) return;
+            
+            const chatMessages = document.getElementById('chat-messages');
+            
+            // Add user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'user-message p-3 mb-2 text-sm';
+            userMessage.innerHTML = `<p>${message}</p>`;
+            chatMessages.appendChild(userMessage);
+            
+            // Clear input
+            input.value = '';
+            
+            // Simulate AI response after a delay
+            setTimeout(() => {
+                // Get a random AI response from the current patient's responses
+                const randomResponse = currentPatient.aiResponses[Math.floor(Math.random() * currentPatient.aiResponses.length)];
+                
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'ai-message p-3 mb-2 text-sm';
+                aiMessage.innerHTML = `<p>${randomResponse}</p>`;
+                chatMessages.appendChild(aiMessage);
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1000);
+        }
+
+        // View treatment protocol
+        function viewProtocol() {
+            if (!currentPatient) return;
+            
+            document.getElementById('protocol-content').innerHTML = currentPatient.protocol;
+            document.getElementById('protocol-modal').classList.remove('hidden');
+        }
+
+        // Close protocol modal
+        function closeProtocolModal() {
+            document.getElementById('protocol-modal').classList.add('hidden');
+        }
+
+        // Upload modal functions
+        function openUploadModal() {
+            document.getElementById('upload-modal').classList.remove('hidden');
+        }
+        
+        function closeUploadModal() {
+            document.getElementById('upload-modal').classList.add('hidden');
+        }
+
+        // PDF modal functions
+        function openPdfModal() {
+            document.getElementById('pdf-modal').classList.remove('hidden');
+            // In a real app, this would be the generated PDF URL
+            document.getElementById('pdf-viewer').src = "https://example.com/generated-report.pdf";
+        }
+        
+        function closePdfModal() {
+            document.getElementById('pdf-modal').classList.add('hidden');
+            document.getElementById('pdf-viewer').src = "";
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // File input change handler
+            document.getElementById('mri-file-input').addEventListener('change', handleFileUpload);
+            
+            // Drop zone for drag and drop
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('active');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                // Get the files
+                const files = e.dataTransfer.files;
+                document.getElementById('mri-file-input').files = files;
+                handleFileUpload();
+            });
+            
+            // Allow pressing Enter in chat input
+            document.getElementById('chat-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Load rare disease patient by default for demo
+            setTimeout(() => {
+                loadPatient('rare');
+            }, 500);
+        });
+    </script>
+</body>
+</html>
